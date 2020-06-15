@@ -120,3 +120,7 @@ i  Writing project information to .firebaserc...
 ```
 export GOOGLE_APPLICATION_CREDENTIALS="/Users/ForeignFood/.config/gcloud/TestApp-0c8c7854335c.json"
 ```
+
+Running `firebase emulators:start` or `firebase serve`:
+
+- if an old version of the app or another Firebase app entirely is rendered in the browser, clear your browser cache.
