@@ -116,3 +116,7 @@ have a build process for your assets, use your build's output directory.
 i  Writing configuration info to firebase.json...
 i  Writing project information to .firebaserc...
 ```
+
+```
+export GOOGLE_APPLICATION_CREDENTIALS="/Users/ForeignFood/.config/gcloud/TestApp-0c8c7854335c.json"
+```
