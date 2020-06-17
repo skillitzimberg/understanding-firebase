@@ -34,7 +34,7 @@ async function runBot() {
   console.log('Starting bot');
   const browser = await puppeteer.launch({
     args: ['--no-sandbox'],
-    headless: false,
+    headless: true,
     // handleSIGINT: false,
     // handleSIGTERM: false,
     // handleSIGHUP: false,
