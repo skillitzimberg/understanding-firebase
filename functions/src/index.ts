@@ -20,8 +20,26 @@ exports.addMessage = functions.https.onRequest(async (req, res) => {
   res.json({ result: `Operation with ID: ${writeResult.id} added.` });
 });
 
-export const onNewEfile = functions.firestore
-  .document('/efile_operations/{documentId}')
+export const runEFile = functions
+  .runWith({
+    timeoutSeconds: 360,
+    memory: '512MB',
+  })
+  .https.onRequest(async (req, resp) => {
+    try {
+      await runBot();
+    } catch (e) {
+      console.log(`runEFile error caught: ${e}`);
+    }
+    resp.send('Done');
+  });
+
+export const onNewEfile = functions
+  .runWith({
+    timeoutSeconds: 360,
+    memory: '512MB',
+  })
+  .firestore.document('/efile_operations/{documentId}')
   .onCreate(async (snap, context) => {
     try {
       await runBot();
@@ -34,7 +52,7 @@ async function runBot() {
   console.log('Starting bot');
   const browser = await puppeteer.launch({
     args: ['--no-sandbox'],
-    headless: true,
+    // headless: false,
     // handleSIGINT: false,
     // handleSIGTERM: false,
     // handleSIGHUP: false,
@@ -42,6 +60,7 @@ async function runBot() {
     // devtools: true
   });
   const page = await browser.newPage();
+  page.setDefaultNavigationTimeout(0);
   const bot: Bot = new Bot(browser, page);
   try {
     const draftId = await bot.run(caseData);
