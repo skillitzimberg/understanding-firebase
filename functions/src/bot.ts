@@ -215,16 +215,21 @@ export class Bot {
   }
 
   async logIn(USERNAME: string, PASSWORD: string) {
-    await this.page.type('#UserName', USERNAME);
-    await this.page.type('#Password', PASSWORD);
-    await this.page.click('.btn');
+    Promise.all([
+      await this.page.type('#UserName', USERNAME),
+      await this.page.type('#Password', PASSWORD),
+      await this.page.click('.btn'),
+    ]);
   }
 
   // StartCase starts a New Case
   async startCase(newCaseURL: string) {
-    await this.page.waitForNavigation();
-    await this.page.waitForSelector(`a[href=${newCaseURL}]`);
-    await this.page.click(`a[href=${newCaseURL}]`);
+    await Promise.all([
+      this.page.waitForNavigation(),
+      this.page.waitForSelector(`a[href=${newCaseURL}]`).then(async () => {
+        await this.page.click(`a[href=${newCaseURL}]`);
+      }),
+    ]);
   }
 
   async killModal(cssSelector: string) {
@@ -288,14 +293,15 @@ export class Bot {
 
     await this.page.waitForSelector(listItemPath);
     let listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
-
-    while (listItemText !== listItem) {
+    console.log(listItemText, listItem);
+    if (listItemText === 'Alabama') {
+      while (listItemText !== listItem) {
+        await this.page.keyboard.press('ArrowDown');
+        listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
+      }
+      // Go one selection past target item. This is kind of a bug work around. The field will not acknowledge a valid entry if the item is both selected and clicked.
       await this.page.keyboard.press('ArrowDown');
-      listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
     }
-
-    // Go one selection past target item. This is kind of a bug work around. The field will not acknowledge a valid entry if the item is both selected and clicked.
-    await this.page.keyboard.press('ArrowDown');
 
     // Get the item to select.
     const itemToSelect: any = await this.listSelectUtil(
@@ -303,17 +309,6 @@ export class Bot {
       listItem,
     );
     await itemToSelect.click();
-  }
-
-  async enterText(sectionName: string, dataName: string, text: string) {
-    await this.page.waitForSelector(
-      `input[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}"]`,
-    );
-
-    await this.page.type(
-      `input[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}"]`,
-      text,
-    );
   }
 
   listSelectUtil = async (listPath: string, listItem: string) => {
@@ -335,6 +330,17 @@ export class Bot {
     }
     return null;
   };
+
+  async enterText(sectionName: string, dataName: string, text: string) {
+    await this.page.waitForSelector(
+      `input[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}"]`,
+    );
+
+    await this.page.type(
+      `input[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}"]`,
+      text,
+    );
+  }
 
   getFullStateName(stateAbbr: string) {
     if (stateAbbr === 'WA' || stateAbbr === 'wa') {
