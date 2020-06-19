@@ -37,7 +37,7 @@ export const runEFile = functions
 export const onNewEfile = functions
   .runWith({
     timeoutSeconds: 360,
-    memory: '512MB',
+    memory: '1GB',
   })
   .firestore.document('/efile_operations/{documentId}')
   .onCreate(async (snap, context) => {
