@@ -49,19 +49,19 @@ export class Bot {
     // Case Information Input: Location
     await this.page.waitFor(1000);
     const legalCounty = this.getLegalCountyName(caseData.property.county);
-    await this.selectFromDropdownV2('Case', 'Location_Id', legalCounty);
+    await this.selectFromDropdown('Case', 'Location_Id', legalCounty);
     console.log('Case location entered (property county)');
 
     // Required field
     // Select Case Information Input: Category
     await this.page.waitFor(1000);
-    await this.selectFromDropdownV2('Case', 'Category_Id', 'Civil');
+    await this.selectFromDropdown('Case', 'Category_Id', 'Civil');
     console.log('Case category entered');
 
     // Required field
     // Select Case Information Input: CaseType
     await this.page.waitFor(1000);
-    await this.selectFromDropdownV2(
+    await this.selectFromDropdown(
       'Case',
       'CaseType_Id',
       'Landlord/Tenant - Residential',
@@ -108,7 +108,7 @@ export class Bot {
 
     if (caseData.client.state !== null && caseData.client.state !== '') {
       const clientState = this.getFullStateName(caseData.client.state);
-      await this.selectFromDropdownV2('Party', 'State_Id', clientState);
+      await this.selectFromDropdown('Party', 'State_Id', clientState);
       console.log('Client state entered');
     }
 
@@ -121,7 +121,7 @@ export class Bot {
       caseData.case.attorney.name !== null &&
       caseData.case.attorney.name !== ''
     ) {
-      await this.selectFromDropdownV2(
+      await this.selectFromDropdown(
         'Party',
         'Attorney_Id',
         caseData.case.attorney.name,
@@ -157,11 +157,7 @@ export class Bot {
 
     if (caseData.tenant.suffix !== null && caseData.tenant.suffix !== '') {
       console.log('Defendant suffix entered');
-      await this.selectFromDropdownV2(
-        'Party',
-        'Suffix',
-        caseData.tenant.suffix,
-      );
+      await this.selectFromDropdown('Party', 'Suffix', caseData.tenant.suffix);
     }
 
     if (caseData.tenant.address1 !== null && caseData.tenant.address1 !== '') {
@@ -250,42 +246,6 @@ export class Bot {
     const ariaOwnsPath = `aria-owns="${sharedPathSegment}_listbox"`;
     const menuPath: string = `span[${ariaOwnsPath}]`;
     const inputPath: string = `input[${ariaOwnsPath}]`;
-    const listOptionPath: string = `li[id="${sharedPathSegment}_option_selected"]`;
-
-    await this.page.waitForSelector(menuPath);
-    await this.page.click(`${menuPath}`);
-
-    await this.page.waitForSelector(inputPath);
-    await this.page.type(inputPath, listItem);
-
-    await this.page.keyboard.press('ArrowDown', { delay: 100 });
-
-    await this.page.waitForSelector(listOptionPath);
-    let listItemText = await this.page.$eval(
-      listOptionPath,
-      li => li.innerHTML,
-    );
-
-    while (
-      listItemText !== listItem &&
-      listItemText !== listItem.toUpperCase()
-    ) {
-      await this.page.keyboard.press('ArrowDown');
-      listItemText = await this.page.$eval(listOptionPath, li => li.innerHTML);
-    }
-
-    await this.page.click(listOptionPath);
-  }
-
-  async selectFromDropdownV2(
-    sectionName: string,
-    dataName: string,
-    listItem: string,
-  ) {
-    const sharedPathSegment = `Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}`;
-    const ariaOwnsPath = `aria-owns="${sharedPathSegment}_listbox"`;
-    const menuPath: string = `span[${ariaOwnsPath}]`;
-    const inputPath: string = `input[${ariaOwnsPath}]`;
 
     const listBox: string = `ul[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_listbox"]`;
     const listItemPath: string = `li[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_option_selected"]`;
@@ -304,45 +264,6 @@ export class Bot {
       `${listBox} li:nth-child(2)`,
     )) as puppeteer.ElementHandle<Element>;
     let listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
-    console.log(listItemText);
-    await itemToSelect.click();
-  }
-
-  async selectFromDropdownV3(
-    sectionName: string,
-    dataName: string,
-    listItem: string,
-  ) {
-    const sharedPathSegment = `Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}`;
-    const ariaOwnsPath = `aria-owns="${sharedPathSegment}_listbox"`;
-    const menuPath: string = `span[${ariaOwnsPath}]`;
-    const inputPath: string = `input[${ariaOwnsPath}]`;
-
-    const listBox: string = `ul[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_listbox"]`;
-    const listItemPath: string = `li[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_option_selected"]`;
-
-    await this.page.waitForSelector(menuPath);
-    await this.page.click(`${menuPath}`);
-
-    await this.page.waitForSelector(inputPath);
-    await this.page.type(inputPath, listItem);
-    await this.page.waitFor(2000);
-
-    // await this.page.keyboard.press('ArrowDown', { delay: 100 });
-
-    await this.page.waitForSelector(`${listBox} li:nth-child(2)`);
-    let itemToSelect = (await this.page.$(
-      `${listBox} li:nth-child(2)`,
-    )) as puppeteer.ElementHandle<Element>;
-    let listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
-    console.log(listItemText);
-    await itemToSelect.click();
-
-    await this.page.waitForSelector(`${listBox} li:nth-child(39)`);
-    itemToSelect = (await this.page.$(
-      `${listBox} li:nth-child(39)`,
-    )) as puppeteer.ElementHandle<Element>;
-    listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
     console.log(listItemText);
     await itemToSelect.click();
   }
