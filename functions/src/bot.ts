@@ -49,19 +49,19 @@ export class Bot {
     // Case Information Input: Location
     await this.page.waitFor(1000);
     const legalCounty = this.getLegalCountyName(caseData.property.county);
-    await this.selectFromDropdown('Case', 'Location_Id', legalCounty);
+    await this.selectFromDropdownV2('Case', 'Location_Id', legalCounty);
     console.log('Case location entered (property county)');
 
     // Required field
     // Select Case Information Input: Category
     await this.page.waitFor(1000);
-    await this.selectFromDropdown('Case', 'Category_Id', 'Civil');
+    await this.selectFromDropdownV2('Case', 'Category_Id', 'Civil');
     console.log('Case category entered');
 
     // Required field
     // Select Case Information Input: CaseType
     await this.page.waitFor(1000);
-    await this.selectFromDropdown(
+    await this.selectFromDropdownV2(
       'Case',
       'CaseType_Id',
       'Landlord/Tenant - Residential',
@@ -108,7 +108,7 @@ export class Bot {
 
     if (caseData.client.state !== null && caseData.client.state !== '') {
       const clientState = this.getFullStateName(caseData.client.state);
-      await this.selectFromDropdown('Party', 'State_Id', clientState);
+      await this.selectFromDropdownV2('Party', 'State_Id', clientState);
       console.log('Client state entered');
     }
 
@@ -121,7 +121,7 @@ export class Bot {
       caseData.case.attorney.name !== null &&
       caseData.case.attorney.name !== ''
     ) {
-      await this.selectFromDropdown(
+      await this.selectFromDropdownV2(
         'Party',
         'Attorney_Id',
         caseData.case.attorney.name,
@@ -132,10 +132,11 @@ export class Bot {
     // Save Plaintiff Party Information
     await this.page.waitFor(2000);
     await this.page.click('#btn24');
+    // await this.page.waitForNavigation({ waitUntil: 'networkidle2' });
     console.log('Plaintiff info saved');
 
     // PARTY INFORMATION SECTION (Defendant Information)
-    await this.page.waitFor(3000);
+    await this.page.waitFor(7000);
     console.log('Start defendant info');
 
     // Required field
@@ -156,7 +157,11 @@ export class Bot {
 
     if (caseData.tenant.suffix !== null && caseData.tenant.suffix !== '') {
       console.log('Defendant suffix entered');
-      await this.selectFromDropdown('Party', 'Suffix', caseData.tenant.suffix);
+      await this.selectFromDropdownV2(
+        'Party',
+        'Suffix',
+        caseData.tenant.suffix,
+      );
     }
 
     if (caseData.tenant.address1 !== null && caseData.tenant.address1 !== '') {
@@ -177,7 +182,7 @@ export class Bot {
     if (caseData.tenant.state !== null && caseData.tenant.state !== '') {
       const tenantState: string = this.getFullStateName(caseData.tenant.state);
       await this.page.waitFor(2000);
-      await this.selectFromDropdownV2('Party', 'State_Id', tenantState);
+      await this.selectOregonState('Party', 'State_Id', tenantState);
       console.log('Defendant state entered');
     }
 
@@ -192,10 +197,11 @@ export class Bot {
     }
 
     // Save Defendant Party Information
-    // await this.page.waitFor(2000);
+    await this.page.waitFor(2000);
     await this.page.click('#btn24');
     console.log('Defendant info saved');
 
+    await this.page.waitFor(10000);
     console.log('Parse header');
     const draftHeader: any = await this.page.$(
       'h2[class="tyler-display-inline-block header-ellipsis"]',
@@ -208,18 +214,16 @@ export class Bot {
 
   async goToURL(URL: string) {
     try {
-      await this.page.goto(URL);
+      await this.page.goto(URL, { waitUntil: 'networkidle2' });
     } catch (error) {
       console.log(error);
     }
   }
 
   async logIn(USERNAME: string, PASSWORD: string) {
-    Promise.all([
-      await this.page.type('#UserName', USERNAME),
-      await this.page.type('#Password', PASSWORD),
-      await this.page.click('.btn'),
-    ]);
+    await this.page.type('#UserName', USERNAME);
+    await this.page.type('#Password', PASSWORD);
+    await this.page.click('.btn');
   }
 
   // StartCase starts a New Case
@@ -273,8 +277,78 @@ export class Bot {
     await this.page.click(listOptionPath);
   }
 
-  // This is used on the Defendant Party information state field which behaves differently than others of the same type.
   async selectFromDropdownV2(
+    sectionName: string,
+    dataName: string,
+    listItem: string,
+  ) {
+    const sharedPathSegment = `Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}`;
+    const ariaOwnsPath = `aria-owns="${sharedPathSegment}_listbox"`;
+    const menuPath: string = `span[${ariaOwnsPath}]`;
+    const inputPath: string = `input[${ariaOwnsPath}]`;
+
+    const listBox: string = `ul[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_listbox"]`;
+    const listItemPath: string = `li[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_option_selected"]`;
+
+    await this.page.waitForSelector(menuPath);
+    await this.page.click(`${menuPath}`);
+
+    await this.page.waitForSelector(inputPath);
+    await this.page.type(inputPath, listItem);
+    await this.page.waitFor(2000);
+
+    await this.page.keyboard.press('ArrowDown', { delay: 100 });
+
+    await this.page.waitForSelector(`${listBox} li:nth-child(2)`);
+    const itemToSelect = (await this.page.$(
+      `${listBox} li:nth-child(2)`,
+    )) as puppeteer.ElementHandle<Element>;
+    let listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
+    console.log(listItemText);
+    await itemToSelect.click();
+  }
+
+  async selectFromDropdownV3(
+    sectionName: string,
+    dataName: string,
+    listItem: string,
+  ) {
+    const sharedPathSegment = `Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}`;
+    const ariaOwnsPath = `aria-owns="${sharedPathSegment}_listbox"`;
+    const menuPath: string = `span[${ariaOwnsPath}]`;
+    const inputPath: string = `input[${ariaOwnsPath}]`;
+
+    const listBox: string = `ul[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_listbox"]`;
+    const listItemPath: string = `li[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_option_selected"]`;
+
+    await this.page.waitForSelector(menuPath);
+    await this.page.click(`${menuPath}`);
+
+    await this.page.waitForSelector(inputPath);
+    await this.page.type(inputPath, listItem);
+    await this.page.waitFor(2000);
+
+    // await this.page.keyboard.press('ArrowDown', { delay: 100 });
+
+    await this.page.waitForSelector(`${listBox} li:nth-child(2)`);
+    let itemToSelect = (await this.page.$(
+      `${listBox} li:nth-child(2)`,
+    )) as puppeteer.ElementHandle<Element>;
+    let listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
+    console.log(listItemText);
+    await itemToSelect.click();
+
+    await this.page.waitForSelector(`${listBox} li:nth-child(39)`);
+    itemToSelect = (await this.page.$(
+      `${listBox} li:nth-child(39)`,
+    )) as puppeteer.ElementHandle<Element>;
+    listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
+    console.log(listItemText);
+    await itemToSelect.click();
+  }
+
+  // This is used on the Defendant Party information state field which behaves differently than others of the same type.
+  async selectOregonState(
     sectionName: string,
     dataName: string,
     listItem: string,
@@ -289,47 +363,29 @@ export class Bot {
     await this.page.waitForSelector(menuPath);
     await this.page.click(`${menuPath}`);
 
+    let listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
+    console.log(listItemText);
+
     await this.page.keyboard.press('ArrowDown');
 
-    await this.page.waitForSelector(listItemPath);
-    let listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
-    console.log(listItemText, listItem);
-    if (listItemText === 'Alabama') {
-      while (listItemText !== listItem) {
-        await this.page.keyboard.press('ArrowDown');
-        listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
-      }
-      // Go one selection past target item. This is kind of a bug work around. The field will not acknowledge a valid entry if the item is both selected and clicked.
+    listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
+    console.log(listItemText);
+
+    while (listItemText !== listItem) {
       await this.page.keyboard.press('ArrowDown');
+      listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
     }
+    // Go one selection past target item. This is kind of a bug work around. The field will not acknowledge a valid entry if the item is both selected and clicked.
+    await this.page.keyboard.press('ArrowDown');
 
     // Get the item to select.
-    const itemToSelect: any = await this.listSelectUtil(
-      `${listPath} li:nth-child(1n + 1)`,
-      listItem,
-    );
+    // Oregon is the 39th item in the list.
+    await this.page.waitForSelector(`${listPath} li:nth-child(39)`);
+    const itemToSelect = (await this.page.$(
+      `${listPath} li:nth-child(39)`,
+    )) as puppeteer.ElementHandle<Element>;
     await itemToSelect.click();
   }
-
-  listSelectUtil = async (listPath: string, listItem: string) => {
-    await this.page.waitForSelector(listPath);
-    const handles = await this.page.$$(listPath);
-
-    for (let i = 0; i < handles.length; i++) {
-      const handle = handles[i];
-
-      const handleText = await (
-        await handle.getProperty('innerText')
-      ).jsonValue();
-
-      if (handleText !== listItem && handleText !== listItem.toUpperCase()) {
-        continue;
-      } else {
-        return handles[i];
-      }
-    }
-    return null;
-  };
 
   async enterText(sectionName: string, dataName: string, text: string) {
     await this.page.waitForSelector(
