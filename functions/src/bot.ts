@@ -246,8 +246,7 @@ export class Bot {
     const ariaOwnsPath = `aria-owns="${sharedPathSegment}_listbox"`;
     const menuPath: string = `span[${ariaOwnsPath}]`;
     const inputPath: string = `input[${ariaOwnsPath}]`;
-
-    const listBox: string = `ul[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_listbox"]`;
+    const listBox: string = `ul[id="${sharedPathSegment}_listbox"]`;
     const listItemPath: string = `li[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_option_selected"]`;
 
     await this.page.waitForSelector(menuPath);
@@ -272,40 +271,22 @@ export class Bot {
   async selectOregonState(
     sectionName: string,
     dataName: string,
-    listItem: string,
+    stateName: string,
   ) {
-    const menuPath: string = `span[aria-owns="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_listbox"]`;
+    const sharedSelectorSegment = `Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}`;
+    const ariaOwnsSelector = `aria-owns="${sharedSelectorSegment}_listbox"`;
+    // const spanAriaOwns: string = `span[${ariaOwnsSelector}]`;
+    const stateInput: string = `input[${ariaOwnsSelector}]`;
+    const stateList: string = `ul[id="${sharedSelectorSegment}_listbox"]`;
 
-    const listPath: string = `ul[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_listbox"]`;
+    const stateSpan = await this.page.waitForSelector(stateInput);
+    await stateSpan.click();
 
-    const listItemPath: string = `li[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_option_selected"]`;
-
-    await this.page.waitFor(2000);
-    await this.page.waitForSelector(menuPath);
-    await this.page.click(`${menuPath}`);
-
-    let listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
-    console.log(listItemText);
-
-    await this.page.keyboard.press('ArrowDown');
-
-    listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
-    console.log(listItemText);
-
-    while (listItemText !== listItem) {
-      await this.page.keyboard.press('ArrowDown');
-      listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
-    }
-    // Go one selection past target item. This is kind of a bug work around. The field will not acknowledge a valid entry if the item is both selected and clicked.
-    await this.page.keyboard.press('ArrowDown');
-
-    // Get the item to select.
-    // Oregon is the 39th item in the list.
-    await this.page.waitForSelector(`${listPath} li:nth-child(39)`);
+    await this.page.type(stateInput, stateName);
     const itemToSelect = (await this.page.$(
-      `${listPath} li:nth-child(39)`,
+      `${stateList} li:nth-child(39)`,
     )) as puppeteer.ElementHandle<Element>;
-    await itemToSelect.click();
+    itemToSelect.click();
   }
 
   async enterText(sectionName: string, dataName: string, text: string) {

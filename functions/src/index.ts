@@ -5,9 +5,7 @@ import { Bot } from './bot';
 import { caseData } from './data';
 
 admin.initializeApp();
-// // Start writing Firebase Functions
-// // https://firebase.google.com/docs/functions/typescript
-//
+
 exports.addMessage = functions.https.onRequest(async (req, res) => {
   // Grab the text parameter.
   const original = req.query.text;
@@ -52,14 +50,15 @@ async function runBot() {
   console.log('Starting bot');
   const browser = await puppeteer.launch({
     args: ['--no-sandbox'],
-    // headless: false,
-    // handleSIGINT: false,
-    // handleSIGTERM: false,
-    // handleSIGHUP: false,
+    headless: false,
     slowMo: 50,
-    // devtools: true
+    // defaultViewport: null,
+    // devtools: true,
   });
-  const page = await browser.newPage();
+  const pageCount = await (await browser.pages()).length;
+  console.log(pageCount);
+  const page = (await browser.pages())[0];
+
   page.setDefaultNavigationTimeout(0);
   const bot: Bot = new Bot(browser, page);
   try {
