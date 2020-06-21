@@ -21,20 +21,19 @@ export class Bot {
 
   async run(caseData: CaseData) {
     // Open browser
-
     await this.goToURL(
       'https://oregon.tylerhost.net/OfsWeb/FileAndServeModule',
     );
     console.log('Browser opened');
 
     // Log in
-
     await this.logIn('marcel@aton-law.com', 'Aton1234');
     console.log('Logged in');
 
     //Start New Case
+    await this.page.waitForNavigation();
     await this.page.waitFor(2000);
-    await this.startCase('"/OfsWeb/FileAndServeModule/Envelope/AddOrEdit"');
+    await this.startCase();
     console.log('New case started');
 
     // Continue past modal
@@ -49,13 +48,13 @@ export class Bot {
     // Case Information Input: Location
     await this.page.waitFor(1000);
     const legalCounty = this.getLegalCountyName(caseData.property.county);
-    await this.selectFromDropdown('Case', 'Location_Id', legalCounty);
+    await this.selectFromDropdown('Case', 'Location_Id', legalCounty, false);
     console.log('Case location entered (property county)');
 
     // Required field
     // Select Case Information Input: Category
     await this.page.waitFor(1000);
-    await this.selectFromDropdown('Case', 'Category_Id', 'Civil');
+    await this.selectFromDropdown('Case', 'Category_Id', 'Civil', false);
     console.log('Case category entered');
 
     // Required field
@@ -65,6 +64,7 @@ export class Bot {
       'Case',
       'CaseType_Id',
       'Landlord/Tenant - Residential',
+      false,
     );
     console.log('Case type entered');
 
@@ -76,17 +76,14 @@ export class Bot {
     console.log('Starting Plaintiff section');
 
     // Checkbox: party isBusines
-
-    await this.page.waitForSelector(
+    await this.page.waitFor(3000);
+    const isBusinessCheckbox = await this.page.waitForSelector(
       `input[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.PartyViewModel.IsBusiness"]`,
     );
+    await isBusinessCheckbox.click();
     console.log('isBusiness Clicked');
+    await this.page.waitFor(3000);
 
-    await this.page.click(
-      'input[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.PartyViewModel.IsBusiness"]',
-    );
-
-    await this.page.waitFor(1000);
     // Required field
     await this.enterText('Party', 'BusinessName', caseData.client.name);
     console.log('Client name entered');
@@ -108,7 +105,7 @@ export class Bot {
 
     if (caseData.client.state !== null && caseData.client.state !== '') {
       const clientState = this.getFullStateName(caseData.client.state);
-      await this.selectFromDropdown('Party', 'State_Id', clientState);
+      await this.selectFromDropdown('Party', 'State_Id', clientState, true);
       console.log('Client state entered');
     }
 
@@ -125,18 +122,17 @@ export class Bot {
         'Party',
         'Attorney_Id',
         caseData.case.attorney.name,
+        false,
       );
       console.log('Attorney selected');
     }
 
     // Save Plaintiff Party Information
-    await this.page.waitFor(2000);
-    await this.page.click('#btn24');
-    // await this.page.waitForNavigation({ waitUntil: 'networkidle2' });
+    await this.savePartyInfo();
     console.log('Plaintiff info saved');
 
     // PARTY INFORMATION SECTION (Defendant Information)
-    await this.page.waitFor(7000);
+    await this.page.waitFor(5000);
     console.log('Start defendant info');
 
     // Required field
@@ -157,7 +153,12 @@ export class Bot {
 
     if (caseData.tenant.suffix !== null && caseData.tenant.suffix !== '') {
       console.log('Defendant suffix entered');
-      await this.selectFromDropdown('Party', 'Suffix', caseData.tenant.suffix);
+      await this.selectFromDropdown(
+        'Party',
+        'Suffix',
+        caseData.tenant.suffix,
+        false,
+      );
     }
 
     if (caseData.tenant.address1 !== null && caseData.tenant.address1 !== '') {
@@ -178,7 +179,7 @@ export class Bot {
     if (caseData.tenant.state !== null && caseData.tenant.state !== '') {
       const tenantState: string = this.getFullStateName(caseData.tenant.state);
       await this.page.waitFor(2000);
-      await this.selectOregonState('Party', 'State_Id', tenantState);
+      await this.selectFromDropdown('Party', 'State_Id', tenantState, true);
       console.log('Defendant state entered');
     }
 
@@ -193,11 +194,10 @@ export class Bot {
     }
 
     // Save Defendant Party Information
-    await this.page.waitFor(2000);
-    await this.page.click('#btn24');
+    await this.savePartyInfo();
     console.log('Defendant info saved');
 
-    await this.page.waitFor(10000);
+    await this.page.waitFor(5000);
     console.log('Parse header');
     const draftHeader: any = await this.page.$(
       'h2[class="tyler-display-inline-block header-ellipsis"]',
@@ -222,82 +222,54 @@ export class Bot {
     await this.page.click('.btn');
   }
 
-  // StartCase starts a New Case
-  async startCase(newCaseURL: string) {
-    await Promise.all([
-      this.page.waitForNavigation(),
-      this.page.waitForSelector(`a[href=${newCaseURL}]`).then(async () => {
-        await this.page.click(`a[href=${newCaseURL}]`);
-      }),
-    ]);
+  async startCase() {
+    const startCaseButton = await this.page.waitForSelector(
+      `a[title="Start a New Case"]`,
+      { visible: true },
+    );
+    await startCaseButton.click();
   }
 
   async killModal(cssSelector: string) {
-    await this.page.waitForSelector(cssSelector);
-    await this.page.click(`${cssSelector}`);
+    const closeModal = await this.page.waitForSelector(cssSelector);
+    await closeModal.click();
   }
 
   async selectFromDropdown(
     sectionName: string,
     dataName: string,
     listItem: string,
+    isState: boolean,
   ) {
-    const sharedPathSegment = `Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}`;
-    const ariaOwnsPath = `aria-owns="${sharedPathSegment}_listbox"`;
-    const menuPath: string = `span[${ariaOwnsPath}]`;
-    const inputPath: string = `input[${ariaOwnsPath}]`;
-    const listBox: string = `ul[id="${sharedPathSegment}_listbox"]`;
-    const listItemPath: string = `li[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}_option_selected"]`;
+    const sharedSelectorSegment = `Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}`;
+    const listBoxSelector = `${sharedSelectorSegment}_listbox`;
+    const ariaOwnsSelector = `aria-owns="${listBoxSelector}"`;
+    const optionsSelector: string = `span[${ariaOwnsSelector}]`;
+    const inputSelector: string = `input[${ariaOwnsSelector}]`;
 
-    await this.page.waitForSelector(menuPath);
-    await this.page.click(`${menuPath}`);
+    const options = await this.page.waitForSelector(optionsSelector);
+    await options.click();
 
-    await this.page.waitForSelector(inputPath);
-    await this.page.type(inputPath, listItem);
+    const itemInput = await this.page.waitForSelector(inputSelector);
+    isState
+      ? await itemInput.type(listItem, { delay: 500 })
+      : await itemInput.type(listItem);
     await this.page.waitFor(2000);
 
     await this.page.keyboard.press('ArrowDown', { delay: 100 });
-
-    await this.page.waitForSelector(`${listBox} li:nth-child(2)`);
-    const itemToSelect = (await this.page.$(
-      `${listBox} li:nth-child(2)`,
-    )) as puppeteer.ElementHandle<Element>;
-    let listItemText = await this.page.$eval(listItemPath, li => li.innerHTML);
-    console.log(listItemText);
-    await itemToSelect.click();
-  }
-
-  // This is used on the Defendant Party information state field which behaves differently than others of the same type.
-  async selectOregonState(
-    sectionName: string,
-    dataName: string,
-    stateName: string,
-  ) {
-    const sharedSelectorSegment = `Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}`;
-    const ariaOwnsSelector = `aria-owns="${sharedSelectorSegment}_listbox"`;
-    // const spanAriaOwns: string = `span[${ariaOwnsSelector}]`;
-    const stateInput: string = `input[${ariaOwnsSelector}]`;
-    const stateList: string = `ul[id="${sharedSelectorSegment}_listbox"]`;
-
-    const stateSpan = await this.page.waitForSelector(stateInput);
-    await stateSpan.click();
-
-    await this.page.type(stateInput, stateName);
-    const itemToSelect = (await this.page.$(
-      `${stateList} li:nth-child(39)`,
-    )) as puppeteer.ElementHandle<Element>;
-    itemToSelect.click();
+    await this.page.keyboard.press('Tab', { delay: 100 });
   }
 
   async enterText(sectionName: string, dataName: string, text: string) {
-    await this.page.waitForSelector(
+    const textInputElement = await this.page.waitForSelector(
       `input[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}"]`,
     );
+    await textInputElement.type(text);
+  }
 
-    await this.page.type(
-      `input[id="Host.Areas.FileAndServeModule.Views.Envelope.ViewModels.${sectionName}ViewModel.${dataName}"]`,
-      text,
-    );
+  async savePartyInfo() {
+    await this.page.waitFor(2000);
+    await this.page.click('#btn37');
   }
 
   getFullStateName(stateAbbr: string) {
