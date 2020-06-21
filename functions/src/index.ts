@@ -50,14 +50,10 @@ async function runBot() {
   console.log('Starting bot');
   const browser = await puppeteer.launch({
     args: ['--no-sandbox'],
-    headless: false,
-    slowMo: 50,
-    // defaultViewport: null,
-    // devtools: true,
+    headless: true,
+    slowMo: 30,
   });
-  const pageCount = await (await browser.pages()).length;
-  console.log(pageCount);
-  const page = (await browser.pages())[0];
+  const page = await browser.newPage();
 
   page.setDefaultNavigationTimeout(0);
   const bot: Bot = new Bot(browser, page);
